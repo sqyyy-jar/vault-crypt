@@ -1,0 +1,10 @@
+[package]
+name = "vault-crypt"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+crossterm = "0.27.0"
+rand = "0.8.5"
+ratatui = "0.26.3"
