@@ -63,7 +63,7 @@ impl Pins {
     pub fn save(&self) -> Vec<u8> {
         let mut out = Vec::new();
         out.push(self.len() as u8);
-        for pin in &self.pins {
+        for pin in self.pins.iter().filter(|pin| pin.pin != 0) {
             out.push(pin.id);
             let pin = encrypt(self.master, pin.id, pin.pin);
             out.extend(pin.to_be_bytes());
@@ -95,7 +95,9 @@ impl Pins {
         if self.max_id >= 99 {
             return false;
         }
-        self.max_id += 1;
+        if !self.pins.is_empty() {
+            self.max_id += 1;
+        }
         self.pins.push(Pin::new(self.max_id, pin));
         true
     }
@@ -117,29 +119,29 @@ impl Pin {
     }
 }
 
-fn encrypt(master: u32, id: u8, pin: u32) -> u32 {
+pub fn encrypt(master: u32, id: u8, pin: u32) -> u32 {
     let pin = encapsulate(pin);
     n_shift(master, id + 1) ^ pin
 }
 
-fn decrypt(master: u32, id: u8, pin: u32) -> u32 {
+pub fn decrypt(master: u32, id: u8, pin: u32) -> u32 {
     let pin = n_shift(master, id + 1) ^ pin;
     decapsulate(pin)
 }
 
-fn encapsulate(pin: u32) -> u32 {
+pub fn encapsulate(pin: u32) -> u32 {
     let mut x = pin;
     x |= OsRng.gen_range(0b00..=0b11) << 30;
     x
 }
 
-fn decapsulate(pin: u32) -> u32 {
+pub fn decapsulate(pin: u32) -> u32 {
     let mut x = pin;
     x &= !(0b11 << 30);
     x
 }
 
-fn n_shift(state: u32, shift: u8) -> u32 {
+pub fn n_shift(state: u32, shift: u8) -> u32 {
     let mut x = state;
     for _ in 0..shift {
         x = xorshift32(x);

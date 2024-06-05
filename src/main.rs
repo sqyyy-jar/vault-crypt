@@ -2,14 +2,13 @@ use std::{env, fs};
 
 use anyhow::{bail, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use pins::Pins;
 use ratatui::{
     prelude::*,
     symbols::border,
     widgets::{block::*, *},
 };
+use vault_crypt::{pins::Pins, re::Cracker};
 
-pub mod pins;
 pub mod tui;
 
 pub struct App {
@@ -253,18 +252,70 @@ impl UnlockedState {
 }
 
 fn main() -> Result<()> {
-    let Some(file) = env::args().nth(1) else {
-        bail!("Provide an input file");
-    };
-    let path = std::path::Path::new(&file);
-    let bytes = if path.exists() {
-        fs::read(&file)?
-    } else {
-        vec![0x00]
-    };
+    let args: Box<[_]> = env::args().skip(1).collect();
+    let args: Box<[_]> = args.iter().map(String::as_str).collect();
+    match args.as_ref() {
+        ["crack" | "c", file] => crack(file, 4),
+        ["crack" | "c", file, thread_count] => {
+            let thread_count: u32 = thread_count.parse()?;
+            crack(file, thread_count)
+        }
+        ["find" | "f", file, thread_count, known_pins @ ..] if args.len() >= 4 => {
+            let thread_count: u32 = thread_count.parse()?;
+            let mut pins = Vec::new();
+            for pin in known_pins {
+                pins.push(pin.parse()?);
+            }
+            find(file, thread_count, &pins)
+        }
+        ["open" | "o", file] | [file] => {
+            let path = std::path::Path::new(&file);
+            let bytes = if path.exists() {
+                fs::read(path)?
+            } else {
+                vec![0x00]
+            };
+            Pins::verify(&bytes)?;
+            let mut terminal = tui::init()?;
+            let app_result = App::new(file.to_string(), bytes).run(&mut terminal);
+            tui::restore()?;
+            app_result
+        }
+        _ => bail!(
+            "    Usage
+vcry crack <file>
+vcry crack <file> <thread count>
+vcry find <file> <thread count> <known pins...>
+vcry open <file>
+vcry <file>"
+        ),
+    }
+}
+
+fn crack(file: &str, thread_count: u32) -> Result<()> {
+    let bytes = fs::read(file)?;
     Pins::verify(&bytes)?;
-    let mut terminal = tui::init()?;
-    let app_result = App::new(file, bytes).run(&mut terminal);
-    tui::restore()?;
-    app_result
+    let cracker = Cracker::load(&bytes);
+    eprintln!(">> Cracking vault with {thread_count} thread(s).");
+    let mut sus_pins = cracker.bruteforce_threaded(thread_count);
+    eprintln!(">> Done. Found {} suspicious master pins.", sus_pins.len());
+    sus_pins.sort_by_key(|sus| u32::MAX - sus.score);
+    for sus in &sus_pins {
+        println!("{sus}");
+    }
+    Ok(())
+}
+
+fn find(file: &str, thread_count: u32, known_pins: &[u32]) -> Result<()> {
+    let bytes = fs::read(file)?;
+    Pins::verify(&bytes)?;
+    let cracker = Cracker::load(&bytes);
+    eprintln!(">> Finding pins in vault with {thread_count} thread(s).");
+    let mut sus_pins = cracker.find_threaded(thread_count, known_pins);
+    eprintln!(">> Done. Found {} suspicious master pins.", sus_pins.len());
+    sus_pins.sort_by_key(|sus| u32::MAX - sus.score);
+    for sus in &sus_pins {
+        println!("{sus}");
+    }
+    Ok(())
 }
