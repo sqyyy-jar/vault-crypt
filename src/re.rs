@@ -46,7 +46,7 @@ impl Cracker {
         let max = max.unwrap_or(1_000_000_000);
         while master < max {
             let mut score = 0;
-            for raw_pin in &self.pins {
+            for raw_pin in self.pins.iter() {
                 let pin = pins::decrypt(master, raw_pin.id, raw_pin.pin);
                 match pin {
                     0 | 123_456_789 | 987_654_321 => {
@@ -93,7 +93,7 @@ impl Cracker {
         let max = max.unwrap_or(1_000_000_000);
         while master < max {
             let mut score = 0;
-            for raw_pin in &self.pins {
+            for raw_pin in self.pins.iter() {
                 let pin = pins::decrypt(master, raw_pin.id, raw_pin.pin);
                 if known_pins.contains(&pin) {
                     score += 1;
