@@ -1,7 +1,4 @@
-use std::{
-    env,
-    fs::{self, File},
-};
+use std::{env, fs};
 
 use anyhow::{bail, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -69,7 +66,8 @@ impl App {
             }
             (AppState::Unlocked(unlocked), KeyCode::Char('s')) if ctrl => {
                 let bytes = unlocked.pins.save();
-                fs::write(&self.file, bytes)?;
+                fs::write(&self.file, &bytes)?;
+                self.bytes = bytes;
             }
             (AppState::Unlocked { .. }, KeyCode::Esc) => {
                 self.state = AppState::locked();

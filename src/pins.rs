@@ -44,7 +44,7 @@ impl Pins {
             let id = bytes[i * 5];
             assert!(id <= 99);
             max_id = max_id.max(id);
-            let pin_bytes = &bytes[i * 5..][1..5];
+            let pin_bytes = &bytes[i * 5 + 1..];
             let pin = (pin_bytes[0] as u32) << 24
                 | (pin_bytes[1] as u32) << 16
                 | (pin_bytes[2] as u32) << 8
@@ -129,7 +129,7 @@ fn decrypt(master: u32, id: u8, pin: u32) -> u32 {
 
 fn encapsulate(pin: u32) -> u32 {
     let mut x = pin;
-    x |= OsRng.gen_range(0..4) << 30;
+    x |= OsRng.gen_range(0b00..=0b11) << 30;
     x
 }
 
@@ -140,7 +140,7 @@ fn decapsulate(pin: u32) -> u32 {
 }
 
 fn n_shift(state: u32, shift: u8) -> u32 {
-    let mut x = state ^ 0x5b9f_1a48;
+    let mut x = state;
     for _ in 0..shift {
         x = xorshift32(x);
     }
