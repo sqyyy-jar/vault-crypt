@@ -48,6 +48,10 @@ impl Cracker {
             let mut score = 0;
             for raw_pin in self.pins.iter() {
                 let pin = pins::decrypt(master, raw_pin.id, raw_pin.pin);
+                if pin > 999_999_999 {
+                    score = 0;
+                    break;
+                }
                 match pin {
                     0 | 123_456_789 | 987_654_321 => {
                         score += 1;
@@ -95,6 +99,10 @@ impl Cracker {
             let mut score = 0;
             for raw_pin in self.pins.iter() {
                 let pin = pins::decrypt(master, raw_pin.id, raw_pin.pin);
+                if pin > 999_999_999 {
+                    score = 0;
+                    break;
+                }
                 if known_pins.contains(&pin) {
                     score += 1;
                 }
