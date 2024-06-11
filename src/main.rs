@@ -260,7 +260,7 @@ fn main() -> Result<()> {
             let thread_count: u32 = thread_count.parse()?;
             crack(file, thread_count)
         }
-        ["find" | "f", file, thread_count, known_pins @ ..] if args.len() >= 4 => {
+        ["find" | "f", file, thread_count, known_pins @ ..] => {
             let thread_count: u32 = thread_count.parse()?;
             let mut pins = Vec::new();
             for pin in known_pins {
@@ -314,8 +314,10 @@ fn find(file: &str, thread_count: u32, known_pins: &[u32]) -> Result<()> {
     let mut sus_pins = cracker.find_threaded(thread_count, known_pins);
     eprintln!(">> Done. Found {} suspicious master pins.", sus_pins.len());
     sus_pins.sort_by_key(|sus| u32::MAX - sus.score);
-    for sus in &sus_pins {
-        println!("{sus}");
+    if sus_pins.len() <= 1_000 {
+        for sus in &sus_pins {
+            println!("{sus}");
+        }
     }
     Ok(())
 }

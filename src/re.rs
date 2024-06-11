@@ -1,3 +1,5 @@
+pub mod rainbow;
+
 use std::{fmt, thread};
 
 use crate::pins;
@@ -53,7 +55,7 @@ impl Cracker {
                     break;
                 }
                 match pin {
-                    0 | 123_456_789 | 987_654_321 => {
+                    0 | 123456 | 123456789 | 987654321 => {
                         score += 1;
                     }
                     _ => (),
@@ -69,12 +71,16 @@ impl Cracker {
     }
 
     pub fn find_threaded(&self, thread_count: u32, known_pins: &[u32]) -> Vec<SusMaster> {
-        assert!(!known_pins.is_empty());
         thread::scope(|scope| {
             let mut handles = Vec::new();
             for i in 0..thread_count {
-                handles
-                    .push(scope.spawn(move || self.part_find(i, thread_count, None, known_pins)));
+                handles.push(scope.spawn(move || {
+                    if known_pins.is_empty() {
+                        self.part_find_no_known(i, thread_count, None)
+                    } else {
+                        self.part_find(i, thread_count, None, known_pins)
+                    }
+                }));
             }
             handles
                 .into_iter()
@@ -92,6 +98,7 @@ impl Cracker {
         max: Option<u32>,
         known_pins: &[u32],
     ) -> Vec<SusMaster> {
+        assert!(!known_pins.is_empty());
         let mut sus = Vec::new();
         let mut master = start;
         let max = max.unwrap_or(1_000_000_000);
@@ -105,6 +112,28 @@ impl Cracker {
                 }
                 if known_pins.contains(&pin) {
                     score += 1;
+                }
+            }
+            if score > 0 {
+                sus.push(SusMaster { master, score });
+            }
+            master += step;
+        }
+        eprintln!(">> Thread finished.");
+        sus
+    }
+
+    fn part_find_no_known(&self, start: u32, step: u32, max: Option<u32>) -> Vec<SusMaster> {
+        let mut sus = Vec::new();
+        let mut master = start;
+        let max = max.unwrap_or(1_000_000_000);
+        while master < max {
+            let mut score = 1;
+            for raw_pin in self.pins.iter() {
+                let pin = pins::decrypt(master, raw_pin.id, raw_pin.pin);
+                if pin > 999_999_999 {
+                    score = 0;
+                    break;
                 }
             }
             if score > 0 {
